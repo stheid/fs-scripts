@@ -14,17 +14,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 
-data class SessionConfig(val login: Login, val server: Server)
-data class Login(val user: String, val pw: String)
-data class Server(val host: String, val login: String, val dashboard: String) {
-    val loginURL get() = host + login
-    val dashboardURL get() = host + dashboard
-}
-
-class Session {
-    private val cfg = ConfigLoader().loadConfigOrThrow<SessionConfig>("/application.yaml")
-    private val login = cfg.login
-    private val server = cfg.server
+class Session(private val login: Credentials, private val server: Server) {
     private val cookie = getSession()
 
     val stores: List<Store>
@@ -39,11 +29,16 @@ class Session {
      */
     fun getSaversIn(store: Store, limitDate: LocalDate): Set<Pair<Saver, LocalDate>> {
         val soup = Jsoup.parse((server.host + store.url).getHtml(cookie))
-        return soup.select("#vue-storeteam").attr("data-vue-props")
-            .let { Gson().fromJson(it.toString(), JsonObject::class.java).get("team").asJsonArray }
+        val data = soup.select("#vue-storeteam").attr("data-vue-props")
+        if (data.isEmpty())
+            return setOf()
+        return data.let { Gson().fromJson(it.toString(), JsonObject::class.java).get("team").asJsonArray }
             .map { it.asJsonObject }
             .filter {
+                // if fetched in the time window of interest
                 it.get("last_fetch").tryGetDate?.let { it > limitDate } ?: false
+                        // and is foodsaver longer than that time window
+                        && it.get("add_date").tryGetDate?.let { it < limitDate } ?: false
             }
             .map {
                 Saver(it.get("name").asString, it.get("id").asInt) to (it.get("last_fetch").tryGetDate

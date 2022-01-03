@@ -1,0 +1,8 @@
+server:
+  host: "https://foodsharing.de"
+  login: "/api/user/login"
+  dashboard: "/?page=dashboard"
+
+stores:
+  fairteilers: [ 4089, 30932, 32635 ]
+  exclude: []#[ 32635,39290 ]

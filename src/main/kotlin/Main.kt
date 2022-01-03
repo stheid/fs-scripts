@@ -1,13 +1,19 @@
+import com.sksamuel.hoplite.ConfigLoader
 import java.time.LocalDate
 
 
 fun main() {
-    val fairteiler = setOf(4089, 30932)
-    val sess = Session()
+    val cfg = ConfigLoader().loadConfigOrThrow<Config>("/application.yaml")
+    val login = ConfigLoader().loadConfigOrThrow<Credentials>("/credencials.yaml")
+
+    val fairteiler = cfg.stores.fairteilers
+    val sess = Session(login, cfg.server)
     val today = LocalDate.now()
     val sixMonthEarlier = today.minusMonths(6)
 
-    val stores = sess.stores.associateWith { sess.getSaversIn(it, sixMonthEarlier) }
+    val stores = sess.stores
+        .filter { !cfg.stores.exclude.contains(it.id) }
+        .associateWith { sess.getSaversIn(it, sixMonthEarlier) }
 
     val leechers = (stores.filter { !fairteiler.contains(it.key.id) }.toSetOfSavers() // stores
             - stores.filter { fairteiler.contains(it.key.id) }.toSetOfSavers())
