@@ -38,8 +38,8 @@ fun main() {
     val path: String = System.getenv("SECRET") ?: throw RuntimeException("SECRET not provided")
     embeddedServer(Netty, port = 80) {
         routing {
-            get("/${path}/check") {
-                log.info("responding to request /${path}")
+            get("/check/${path}") {
+                log.info("responding to request /check/${path}")
                 call.respondText(getUnhelpfulFoodsavers())
             }
         }
