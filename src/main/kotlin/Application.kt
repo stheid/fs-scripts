@@ -10,7 +10,7 @@ import java.lang.RuntimeException
 
 fun getUnhelpfulFoodsavers(): String {
     val user: String = System.getenv("USER") ?: throw RuntimeException("USER not provided")
-    val pw: String = System.getenv("PWD") ?: throw RuntimeException("PWD not provided")
+    val pw: String = System.getenv("PW") ?: throw RuntimeException("PW not provided")
 
     val login = Credentials(user, pw)
     val cfg = ConfigLoader().loadConfigOrThrow<Config>("/application.yaml")

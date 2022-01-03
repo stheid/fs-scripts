@@ -8,5 +8,5 @@ RUN gradle shadowJar
 FROM openjdk:11-jre-slim
 
 COPY --from=builder /home/gradle/src/build/libs .
-ENTRYPOINT java -jar *.jar
 EXPOSE 80
+ENTRYPOINT java -jar *.jar
