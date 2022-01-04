@@ -20,10 +20,17 @@ fun getUnhelpfulFoodsavers(): String {
     }
 
     val stores = sess.stores.filter { !cfg.stores.exclude.contains(it.id) }.associateWith { store ->
-        sess.getSaversIn(store).filter { (_, lastDate) -> lastDate?.let { it > observationWindow } == true }
+        sess.getSaversIn(store)
+            // only keep pickups in the observation window
+            .filter { (_, lastDate) -> lastDate?.let { it > observationWindow } == true }
     }
 
-    val saversActiveInStores = stores.filter { !it.key.isFairteiler() }.getSavers { it > inactiveDate }
+    val saversActiveInStores =
+        stores.filter { !it.key.isFairteiler() }.getSavers(
+            // did recently pickup
+            { it > inactiveDate },
+            // is foodsaver for a while
+            { it < inactiveDate })
     val saversInFairteilers = stores.filter { it.key.isFairteiler() }.getSavers()
 
     // mapping of foodsavers to list of his latest pickups per store
@@ -42,8 +49,17 @@ fun getUnhelpfulFoodsavers(): String {
 }
 
 
-private fun <K> Map<K, Collection<Pair<Saver, LocalDate?>>>.getSavers(filter: (LocalDate) -> Boolean = { true }): Set<Saver> {
-    return this.values.flatten().filter { (_, lastDate) -> lastDate?.let(filter) == true }.map { it.first }.toSet()
+private fun <K> Map<K, Collection<Triple<Saver, LocalDate?, LocalDate?>>>.getSavers(
+    lastPickupFilter: (LocalDate) -> Boolean = { true },
+    addDateFilter: (LocalDate) -> Boolean = { true }
+): Set<Saver> {
+    return this.values.flatten()
+        .filter { (_, lastDate, addDate) ->
+            lastDate?.let(lastPickupFilter) ?: false
+                    && addDate?.let(addDateFilter) ?: false
+        }
+        .map { it.first }
+        .toSet()
 }
 
 fun main() {
