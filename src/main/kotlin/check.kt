@@ -12,37 +12,33 @@ fun getUnhelpfulFoodsavers(): String {
     val fairteiler = cfg.stores.fairteilers
     val sess = Session(login, cfg.server)
     val today = LocalDate.now()
+    val inactiveDate = today.minusMonths(2)
+    val observationWindow = today.minusMonths(2)
 
     fun Store.isFairteiler(): Boolean {
         return fairteiler.contains(this.id)
     }
 
     val stores = sess.stores.filter { !cfg.stores.exclude.contains(it.id) }.associateWith { store ->
-        if (store.isFairteiler()) sess.getSaversIn(store) { fetchDate -> fetchDate > today.minusMonths(6) }
-        else sess.getSaversIn(store) { fetchDate ->
-            // if foodsaver was active in the 2 month, but did not make its cleaning
-            fetchDate > today.minusMonths(6)
-        }
+        sess.getSaversIn(store).filter { (_, lastDate) -> lastDate?.let { it > observationWindow } == true }
     }
 
-    val saversActiveInStores = stores.filter {
-        !it.key.isFairteiler() && it.value.any { (_, fetchDate) -> fetchDate < today.minusMonths(2) }
-    }.toSetOfSavers() // stores
-    val saversInFairteilers = stores.filter { it.key.isFairteiler() }.toSetOfSavers()
+    val saversActiveInStores = stores.filter { !it.key.isFairteiler() }.getSavers { it < inactiveDate }
+    val saversInFairteilers = stores.filter { it.key.isFairteiler() }.getSavers()
 
     val criticalIndividuals = (saversActiveInStores - saversInFairteilers)
         .associateWith { leecher ->
-            stores.filter { it.value.map { (saver, _) -> saver }.contains(leecher) }
+            stores.filter { (store, savers) -> savers.map { (saver, _) -> saver }.contains(leecher) }
                 .map { (store, entry) -> "${store.name} ${entry.single { (saver, _) -> saver == leecher }.second}" }
         }
 
     return criticalIndividuals.toSortedMap(compareBy { it.name }).map { "${it.key} -> ${it.value}" }.joinToString("\n")
 }
 
-private fun <K, V> Map<K, Collection<Pair<Saver, V>>>.toSetOfSavers(): Set<Saver> {
-    return this.values.flatten().map { it.first }.toSet()
-}
 
+private fun <K> Map<K, Collection<Pair<Saver, LocalDate?>>>.getSavers(filter: (LocalDate) -> Boolean = { true }): Set<Saver> {
+    return this.values.flatten().filter { (_, lastDate) -> lastDate?.let(filter) == true }.map { it.first }.toSet()
+}
 
 fun main() {
     println(getUnhelpfulFoodsavers())

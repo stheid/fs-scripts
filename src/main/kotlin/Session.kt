@@ -25,7 +25,7 @@ class Session(private val login: Credentials, private val server: Server) {
     /**
      * @param limitDate only return savers active before this date
      */
-    fun getSaversIn(store: Store, dateFilter: (LocalDate) -> Boolean): Set<Pair<Saver, LocalDate>> {
+    fun getSaversIn(store: Store): Set<Pair<Saver, LocalDate?>> {
         val soup = Jsoup.parse((server.host + store.url).getHtml(cookie))
         val data = soup.select("#vue-storeteam").attr("data-vue-props")
         if (data.isEmpty())
@@ -33,15 +33,11 @@ class Session(private val login: Credentials, private val server: Server) {
         return data.let { Gson().fromJson(it.toString(), JsonObject::class.java).get("team").asJsonArray }
             .map { it.asJsonObject }
             .map {
-                Triple(
+                Pair(
                     Saver(it.get("name").asString, it.get("id").asInt),
-                    (it.get("last_fetch").tryGetDate ?: LocalDate.ofEpochDay(0L)),
-                    (it.get("add_date").tryGetDate ?: LocalDate.ofEpochDay(0L))
+                    it.get("last_fetch").tryGetDate
                 )
-            }.filter { (_, lastFetchDate, addDate) ->
-                // if fetched in the time window of interest
-                dateFilter(lastFetchDate)
-            }.map { (saver, fetchdate, _) -> saver to fetchdate }.toSet()
+            }.toSet()
     }
 
     private fun getSession(): String {
