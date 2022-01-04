@@ -21,15 +21,20 @@ fun getUnhelpfulFoodsavers(): String {
         if (store.isFairteiler()) sess.getSaversIn(store) { fetchDate -> fetchDate > today.minusMonths(6) }
         else sess.getSaversIn(store) { fetchDate ->
             // if foodsaver was active in the 2 month, but did not make its cleaning
-            fetchDate > today.minusMonths(6) && fetchDate < today.minusMonths(2)
+            fetchDate > today.minusMonths(6)
         }
     }
 
-    val criticalIndividuals = (stores.filter { !it.key.isFairteiler() }.toSetOfSavers() // stores
-            - stores.filter { it.key.isFairteiler() }.toSetOfSavers()).associateWith { leecher ->
-        stores.filter { it.value.map { (saver, _) -> saver }.contains(leecher) }
-            .map { (store, entry) -> "${store.name} ${entry.single { (saver, _) -> saver == leecher }.second}" }
-    }
+    val saversActiveInStores = stores.filter {
+        !it.key.isFairteiler() && it.value.any { (_, fetchDate) -> fetchDate < today.minusMonths(2) }
+    }.toSetOfSavers() // stores
+    val saversInFairteilers = stores.filter { it.key.isFairteiler() }.toSetOfSavers()
+
+    val criticalIndividuals = (saversActiveInStores - saversInFairteilers)
+        .associateWith { leecher ->
+            stores.filter { it.value.map { (saver, _) -> saver }.contains(leecher) }
+                .map { (store, entry) -> "${store.name} ${entry.single { (saver, _) -> saver == leecher }.second}" }
+        }
 
     return criticalIndividuals.toSortedMap(compareBy { it.name }).map { "${it.key} -> ${it.value}" }.joinToString("\n")
 }
