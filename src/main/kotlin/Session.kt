@@ -6,9 +6,7 @@ import com.github.kittinunf.fuel.httpPost
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.sksamuel.hoplite.ConfigLoader
 import org.jsoup.Jsoup
-import java.io.Serializable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -27,23 +25,23 @@ class Session(private val login: Credentials, private val server: Server) {
     /**
      * @param limitDate only return savers active before this date
      */
-    fun getSaversIn(store: Store, limitDate: LocalDate): Set<Pair<Saver, LocalDate>> {
+    fun getSaversIn(store: Store, dateFilter: (LocalDate) -> Boolean): Set<Pair<Saver, LocalDate>> {
         val soup = Jsoup.parse((server.host + store.url).getHtml(cookie))
         val data = soup.select("#vue-storeteam").attr("data-vue-props")
         if (data.isEmpty())
             return setOf()
         return data.let { Gson().fromJson(it.toString(), JsonObject::class.java).get("team").asJsonArray }
             .map { it.asJsonObject }
-            .filter {
-                // if fetched in the time window of interest
-                it.get("last_fetch").tryGetDate?.let { it > limitDate } ?: false
-                        // and is foodsaver longer than that time window
-                        && it.get("add_date").tryGetDate?.let { it < limitDate } ?: false
-            }
             .map {
-                Saver(it.get("name").asString, it.get("id").asInt) to (it.get("last_fetch").tryGetDate
-                    ?: LocalDate.ofEpochDay(0L))
-            }.toSet()
+                Triple(
+                    Saver(it.get("name").asString, it.get("id").asInt),
+                    (it.get("last_fetch").tryGetDate ?: LocalDate.ofEpochDay(0L)),
+                    (it.get("add_date").tryGetDate ?: LocalDate.ofEpochDay(0L))
+                )
+            }.filter { (_, lastFetchDate, addDate) ->
+                // if fetched in the time window of interest
+                dateFilter(lastFetchDate)
+            }.map { (saver, fetchdate, _) -> saver to fetchdate }.toSet()
     }
 
     private fun getSession(): String {
