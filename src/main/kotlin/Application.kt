@@ -26,7 +26,8 @@ fun main() {
             }
             get("/inactive/${secret}") {
                 log.info("responding to request /InactiveService.kt/${secret}")
-                call.respondText(InactiveService(sess, cfg).getInactive())
+                val inactiveMonth = call.request.queryParameters.get("month")?.toIntOrNull()
+                call.respondText(InactiveService(sess, cfg).getInactive(inactiveMonth))
             }
         }
     }.start(wait = true)

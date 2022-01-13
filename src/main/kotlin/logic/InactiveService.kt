@@ -3,18 +3,18 @@ import logic.getSavers
 import java.time.LocalDate
 
 class InactiveService(session: Session, cfg: Config) : Service(session, cfg) {
-    fun getInactive(): String {
+    fun getInactive(inactiveMonth: Int? = null): String {
         val today = LocalDate.now()
-        val observationWindow = today.minusMonths(6)
+        val inactiveDate = today.minusMonths((inactiveMonth ?: 6).toLong())
 
-        val stores = session.stores.filter { !cfg.stores.exclude.contains(it.id) }.associateWith { store ->
-            session.getSaversIn(store)
-                // only keep pickups older than observation winows
-                .filter { (_, lastDate) -> lastDate?.let { it < observationWindow } == true }
-        }
+        val stores = session.stores
+            .filter { !cfg.stores.exclude.contains(it.id) }
+            .associateWith { store -> session.getSaversIn(store) }
 
-        val inactiveSavers = stores.getSavers()
+        val allSavers = stores.getSavers()
+        val activeSavers = stores.getSavers({ it > inactiveDate })
 
-        return inactiveSavers.toSortedSet(compareBy { it.name }).joinToString("\n")
+        // inactive savers
+        return (allSavers - activeSavers).toSortedSet(compareBy { it.name }).joinToString("\n")
     }
 }

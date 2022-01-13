@@ -22,6 +22,7 @@ dependencies {
     implementation("com.github.kittinunf.fuel:fuel:2.3.1")
     implementation("org.jsoup:jsoup:1.14.3")
     implementation("com.google.code.gson:gson:2.8.9")
+    implementation("com.github.ajalt.clikt:clikt:3.3.0")
 
     implementation("io.github.microutils:kotlin-logging-jvm:2.1.21")
     implementation("org.slf4j:slf4j-log4j12:1.7.32")
